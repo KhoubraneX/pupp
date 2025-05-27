@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Login Proxy</title>
+  </head>
+  <body>
+    <h1>Login to my-website.com</h1>
+
+    <div id="message"></div>
+
+    <form id="loginForm">
+      <input type="text" name="email" placeholder="Email" required /><br />
+      <input
+        type="password"
+        name="password"
+        placeholder="Password"
+        required
+      /><br />
+      <button type="submit">Login</button>
+    </form>
+
+    <form id="otpForm" style="display: none">
+      <input
+        type="text"
+        name="otp"
+        placeholder="Enter OTP"
+        required
+        minlength="6"
+        maxlength="6"
+      /><br />
+      <button type="submit">Verify OTP</button>
+    </form>
+
+    <script>
+      const loginForm = document.getElementById("loginForm");
+      const otpForm = document.getElementById("otpForm");
+      const messageDiv = document.getElementById("message");
+
+      loginForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        messageDiv.textContent = "";
+
+        const submitBtn = loginForm.querySelector("button[type=submit]");
+        submitBtn.disabled = true;
+        messageDiv.textContent = "Loading...";
+
+        const formData = new URLSearchParams(new FormData(loginForm));
+
+        try {
+          const res = await fetch("/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: formData.toString(),
+          });
+
+          const text = await res.text();
+
+          if (text.includes("temporary password sent to email")) {
+            messageDiv.innerHTML =
+              '<h2 style="color:green;">✅ OTP sent to your email.</h2><p>Please enter it below.</p>';
+            loginForm.style.display = "none";
+            otpForm.style.display = "block";
+          } else if (
+            text.toLowerCase().includes("incorrect") ||
+            text.toLowerCase().includes("failed")
+          ) {
+            messageDiv.innerHTML = `<h2 style="color:red;">❌ ${text}</h2>`;
+            loginForm.style.display = "block";
+            otpForm.style.display = "none";
+          } else {
+            messageDiv.innerHTML = text;
+          }
+        } catch (error) {
+          messageDiv.innerHTML = `<h2 style="color:red;">❌ Network error, please try again.</h2>`;
+        } finally {
+          submitBtn.disabled = false;
+        }
+      });
+
+      otpForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        messageDiv.textContent = "";
+
+        const submitBtn = otpForm.querySelector("button[type=submit]");
+        submitBtn.disabled = true;
+        messageDiv.textContent = "Verifying OTP...";
+
+        const formData = new URLSearchParams(new FormData(otpForm));
+
+        try {
+          const res = await fetch("/submit-otp", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: formData.toString(),
+          });
+
+          const text = await res.text();
+
+          if (text.toLowerCase().includes("login successful")) {
+            messageDiv.innerHTML = `<h2 style="color:green;">🎉 Login successful! You are now authenticated.</h2>`;
+            loginForm.style.display = "none";
+            otpForm.style.display = "none";
+          } else if (
+            text.toLowerCase().includes("incorrect") ||
+            text.toLowerCase().includes("failed")
+          ) {
+            messageDiv.innerHTML = `<h2 style="color:red;">❌ ${text}</h2>`;
+            loginForm.style.display = "none";
+            otpForm.style.display = "block";
+          } else {
+            messageDiv.innerHTML = text;
+          }
+        } catch (error) {
+          messageDiv.innerHTML = `<h2 style="color:red;">❌ Network error, please try again.</h2>`;
+        } finally {
+          submitBtn.disabled = false;
+        }
+      });
+    </script>
+  </body>
+</html>
